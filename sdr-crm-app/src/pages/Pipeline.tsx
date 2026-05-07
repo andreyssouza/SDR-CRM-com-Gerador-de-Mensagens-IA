@@ -197,7 +197,7 @@ export function Pipeline() {
                 <div className="flex-1 flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium text-gray-800 truncate">{stage.name}</span>
                   {stage.is_trigger && (
-                    <Zap size={12} className="text-amber-500 shrink-0" title="Gatilho automático" />
+                    <span title="Gatilho automático"><Zap size={12} className="text-amber-500 shrink-0" /></span>
                   )}
                   {stage.is_default && (
                     <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">

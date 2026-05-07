@@ -33,21 +33,19 @@ export function LeadCard({ lead, isDragging = false }: LeadCardProps) {
       className={cn(
         'bg-white rounded-lg border border-gray-200 p-3 shadow-sm select-none',
         'hover:border-brand-400 hover:shadow-md transition-all duration-150',
-        (isDragging || isSortableDragging) && 'opacity-50 rotate-1 shadow-lg border-brand-400',
+        (isDragging || isSortableDragging) ? 'opacity-50 rotate-1 shadow-lg border-brand-400 cursor-grabbing' : 'cursor-grab',
       )}
+      {...attributes}
+      {...listeners}
     >
       <div className="flex items-start gap-2">
-        <button
-          className="mt-0.5 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0"
-          {...attributes}
-          {...listeners}
-        >
+        <div className="mt-0.5 text-gray-300 shrink-0">
           <GripVertical size={14} />
-        </button>
+        </div>
 
         <div
-          className="flex-1 min-w-0 cursor-pointer"
-          onClick={() => navigate(`/leads/${lead.id}`)}
+          className="flex-1 min-w-0"
+          onClick={(e) => { if (!isSortableDragging) { e.stopPropagation(); navigate(`/leads/${lead.id}`) } }}
         >
           <p className="text-sm font-semibold text-gray-900 truncate">{lead.name}</p>
 

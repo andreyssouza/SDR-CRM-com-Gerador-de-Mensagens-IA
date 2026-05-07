@@ -9,7 +9,6 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { usePipeline } from '@/hooks/usePipeline'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { cn, formatDate, formatRelativeTime } from '@/lib/utils'
 import type { Lead, ActivityLog, GeneratedMessage, PipelineStage } from '@/lib/types'
 
@@ -67,18 +66,18 @@ export function LeadDetail() {
     if (!id) return
     setIsLoading(true)
     const [leadRes, activitiesRes, messagesRes] = await Promise.all([
-      supabase
+      db
         .from('leads')
         .select('*, stage:pipeline_stages(*)')
         .eq('id', id)
         .single(),
-      supabase
+      db
         .from('activity_logs')
         .select('*')
         .eq('lead_id', id)
         .order('created_at', { ascending: false })
         .limit(30),
-      supabase
+      db
         .from('generated_messages')
         .select('*, campaign:campaigns(name, channel)')
         .eq('lead_id', id)

@@ -1,16 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/Button'
 import { Input }  from '@/components/ui/Input'
 
 export function Register() {
-  const navigate = useNavigate()
   const [name,     setName]     = useState('')
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
+  const [success,  setSuccess]  = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -34,10 +34,36 @@ export function Register() {
     if (authError) {
       setError(authError.message)
     } else {
-      // Trigger do banco cria workspace automaticamente
-      navigate('/dashboard')
+      setSuccess(true)
     }
     setLoading(false)
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Verifique seu email</h2>
+            <p className="text-gray-500 text-sm mb-1">
+              Enviamos um link de confirmação para:
+            </p>
+            <p className="font-medium text-gray-800 mb-4">{email}</p>
+            <p className="text-gray-500 text-sm mb-6">
+              Clique no link do email para ativar sua conta e poder fazer login.
+            </p>
+            <Link to="/login" className="text-brand-600 font-medium hover:underline text-sm">
+              Ir para o login
+            </Link>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

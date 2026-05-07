@@ -69,7 +69,7 @@ export function useLeads() {
     return true
   }
 
-  async function moveLead(leadId: string, newStageId: string, stages?: PipelineStage[]): Promise<boolean> {
+  async function moveLead(leadId: string, newStageId: string, _stages?: PipelineStage[]): Promise<boolean> {
     if (!workspace || !user) return false
     const lead = leads.find(l => l.id === leadId)
     if (!lead || lead.stage_id === newStageId) return true
@@ -89,7 +89,7 @@ export function useLeads() {
 
     // Auto-trigger: fire campaigns that are explicitly configured for this stage
     // (trigger_stage_id = newStageId), fire-and-forget, non-blocking
-    const { data: triggerCampaigns } = await supabase
+    const { data: triggerCampaigns } = await db
       .from('campaigns')
       .select('id')
       .eq('workspace_id', workspace.id)
@@ -98,7 +98,8 @@ export function useLeads() {
 
     if (triggerCampaigns?.length) {
       Promise.allSettled(
-        triggerCampaigns.map(c =>
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        triggerCampaigns.map((c: any) =>
           supabase.functions.invoke('generate-messages', {
             body: { lead_id: leadId, campaign_id: c.id, variations: 3 },
           })

@@ -29,7 +29,9 @@
       "Bash(Test-Path \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\\\\README.md\")",
       "Bash(git commit *)",
       "Bash(git pull *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(vercel env *)",
+      "Bash(vercel --prod)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USUÁRIO\\Prova Vibe coding\\sdr-crm\\supabase"

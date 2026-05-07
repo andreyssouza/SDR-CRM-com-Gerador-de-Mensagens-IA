@@ -84,7 +84,7 @@ function LeadsPerWeekChart({ data }: { data: LeadsPerWeek[] }) {
         <Tooltip
           cursor={{ fill: '#f5f3ff' }}
           contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-          formatter={(value: number) => [value, 'Leads']}
+          formatter={(value) => [value, 'Leads']}
         />
         <Bar dataKey="leads" fill="#6366f1" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 12, fontWeight: 700, fill: '#374151' }} />
       </BarChart>

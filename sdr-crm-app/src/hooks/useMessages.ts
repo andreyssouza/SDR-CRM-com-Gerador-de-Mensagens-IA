@@ -76,7 +76,7 @@ export function useMessages(campaignId: string | null) {
         })
 
         // Move lead to the trigger stage ("Tentando Contato") if not already there
-        const { data: triggerStage } = await supabase
+        const { data: triggerStage } = await db
           .from('pipeline_stages')
           .select('id')
           .eq('workspace_id', workspace.id)
@@ -86,7 +86,7 @@ export function useMessages(campaignId: string | null) {
           .single()
 
         if (triggerStage) {
-          const { data: lead } = await supabase
+          const { data: lead } = await db
             .from('leads')
             .select('stage_id')
             .eq('id', msg.lead_id)
