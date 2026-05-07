@@ -23,7 +23,7 @@ A aplicação suporta múltiplos workspaces isolados (multi-tenancy), controle d
 | Gráficos | Recharts |
 | Ícones | Lucide React |
 | Backend / Banco | Supabase (PostgreSQL 15 + Auth + Edge Functions) |
-| IA | Google Gemini 2.5 Flash |
+| IA | Google Gemini 2.5 Flash (via Supabase Edge Function) |
 | Runtime Edge | Deno (Supabase Edge Functions) |
 
 ---
