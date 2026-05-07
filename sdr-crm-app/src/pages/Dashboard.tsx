@@ -1,7 +1,18 @@
-import { Users, MessageSquare, Zap, RefreshCw, TrendingUp } from 'lucide-react'
+import { Users, MessageSquare, Zap, RefreshCw, TrendingUp, BarChart2, ArrowRight, Calendar } from 'lucide-react'
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import { Button } from '@/components/ui/Button'
 import { useDashboard } from '@/hooks/useDashboard'
+import type { LeadsPerWeek, MessagesByCampaign, StageTransition } from '@/hooks/useDashboard'
 import { cn } from '@/lib/utils'
+import type { PipelineStage } from '@/lib/types'
 
 const ACTIVITY_LABELS: Record<string, string> = {
   lead_created:       'Lead criado',
@@ -10,6 +21,13 @@ const ACTIVITY_LABELS: Record<string, string> = {
   message_generated:  'Mensagem gerada',
   message_sent:       'Mensagem enviada',
   campaign_applied:   'Campanha aplicada',
+}
+
+const CHANNEL_LABELS: Record<string, string> = {
+  email:    'Email',
+  linkedin: 'LinkedIn',
+  whatsapp: 'WhatsApp',
+  other:    'Outro',
 }
 
 function StatCard({
@@ -31,6 +49,140 @@ function StatCard({
       <div>
         <p className="text-2xl font-bold text-gray-900">{value}</p>
         <p className="text-sm text-gray-500 mt-0.5">{label}</p>
+      </div>
+    </div>
+  )
+}
+
+function LeadsPerWeekChart({ data }: { data: LeadsPerWeek[] }) {
+  if (!data.length) {
+    return <p className="text-sm text-gray-400 text-center py-8">Sem dados de período</p>
+  }
+
+  const chartData = data.map(d => {
+    const [y, m, day] = d.week_start.split('-').map(Number)
+    const label = new Date(y, m - 1, day).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+    return { label, leads: d.lead_count }
+  })
+
+  return (
+    <ResponsiveContainer width="100%" height={180}>
+      <BarChart data={chartData} barCategoryGap="30%" margin={{ top: 16, right: 8, left: -20, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+        <XAxis
+          dataKey="label"
+          tick={{ fontSize: 11, fill: '#9ca3af' }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <YAxis
+          allowDecimals={false}
+          tick={{ fontSize: 11, fill: '#9ca3af' }}
+          axisLine={false}
+          tickLine={false}
+        />
+        <Tooltip
+          cursor={{ fill: '#f5f3ff' }}
+          contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
+          formatter={(value: number) => [value, 'Leads']}
+        />
+        <Bar dataKey="leads" fill="#6366f1" radius={[6, 6, 0, 0]} label={{ position: 'top', fontSize: 12, fontWeight: 700, fill: '#374151' }} />
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+function ConversionTable({
+  transitions,
+  stages,
+}: {
+  transitions: StageTransition[]
+  stages: { stage: PipelineStage; count: number }[]
+}) {
+  const stageMap = Object.fromEntries(stages.map(s => [s.stage.id, s.stage]))
+
+  if (!transitions.length) {
+    return <p className="text-sm text-gray-400 text-center py-6">Nenhuma movimentação registrada</p>
+  }
+
+  const sorted = [...transitions].sort((a, b) => b.transition_count - a.transition_count).slice(0, 8)
+  const maxCount = Math.max(...sorted.map(t => t.transition_count), 1)
+
+  return (
+    <div className="space-y-2">
+      {sorted.map((t, i) => {
+        const from = stageMap[t.from_stage_id]
+        const to   = stageMap[t.to_stage_id]
+        if (!from || !to) return null
+        return (
+          <div key={i} className="flex items-center gap-2 text-xs">
+            <span
+              className="px-2 py-0.5 rounded-full font-medium text-white shrink-0"
+              style={{ backgroundColor: from.color ?? '#6366f1' }}
+            >
+              {from.name}
+            </span>
+            <ArrowRight size={12} className="text-gray-400 shrink-0" />
+            <span
+              className="px-2 py-0.5 rounded-full font-medium text-white shrink-0"
+              style={{ backgroundColor: to.color ?? '#6366f1' }}
+            >
+              {to.name}
+            </span>
+            <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden ml-1">
+              <div
+                className="h-full bg-brand-400 rounded-full"
+                style={{ width: `${(t.transition_count / maxCount) * 100}%` }}
+              />
+            </div>
+            <span className="font-semibold text-gray-700 shrink-0 w-5 text-right">{t.transition_count}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function MessagesByCampaignList({ data }: { data: MessagesByCampaign[] }) {
+  if (!data.length) {
+    return <p className="text-sm text-gray-400 text-center py-6">Nenhuma mensagem gerada</p>
+  }
+  const maxGenerated = Math.max(...data.map(d => d.total_generated), 1)
+
+  return (
+    <div className="space-y-3">
+      {data.map(d => (
+        <div key={d.campaign_id}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs font-medium text-gray-700 truncate">{d.campaign_name}</span>
+              <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded shrink-0">
+                {CHANNEL_LABELS[d.channel] ?? d.channel}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 ml-2 text-[10px]">
+              <span className="text-green-600 font-semibold">{d.total_sent} enviadas</span>
+              <span className="text-gray-400">{d.total_generated} geradas</span>
+            </div>
+          </div>
+          <div className="flex gap-0.5 h-1.5">
+            <div
+              className="rounded-l-full bg-green-400"
+              style={{ width: `${(d.total_sent / maxGenerated) * 100}%` }}
+            />
+            <div
+              className="bg-amber-300"
+              style={{ width: `${(d.total_draft / maxGenerated) * 100}%` }}
+            />
+            <div
+              className="rounded-r-full bg-gray-200 flex-1"
+            />
+          </div>
+        </div>
+      ))}
+      <div className="flex items-center gap-3 pt-1 text-[10px] text-gray-400">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-400 inline-block" /> Enviadas</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-300 inline-block" /> Rascunho</span>
       </div>
     </div>
   )
@@ -93,14 +245,13 @@ export function Dashboard() {
         />
       </div>
 
+      {/* Row 1: leads by stage + recent activity */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Leads by stage */}
         <div className="lg:col-span-2 bg-white rounded-xl border border-gray-200 p-5">
           <div className="flex items-center gap-2 mb-5">
             <TrendingUp size={16} className="text-brand-600" />
             <h2 className="text-sm font-semibold text-gray-800">Leads por etapa</h2>
           </div>
-
           {data?.leadsByStage.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">Nenhuma etapa configurada</p>
           ) : (
@@ -122,19 +273,15 @@ export function Dashboard() {
                       }}
                     />
                   </div>
-                  <div className="w-8 text-right text-xs font-semibold text-gray-700 shrink-0">
-                    {count}
-                  </div>
+                  <div className="w-8 text-right text-xs font-semibold text-gray-700 shrink-0">{count}</div>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        {/* Recent activity */}
         <div className="bg-white rounded-xl border border-gray-200 p-5 flex flex-col">
           <h2 className="text-sm font-semibold text-gray-800 mb-4">Atividade recente</h2>
-
           {!data?.recentActivity.length ? (
             <p className="text-sm text-gray-400 text-center py-8">Nenhuma atividade ainda</p>
           ) : (
@@ -148,10 +295,7 @@ export function Dashboard() {
                     </p>
                     <p className="text-xs text-gray-400">
                       {new Date(log.created_at).toLocaleString('pt-BR', {
-                        day: '2-digit',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                        day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
                       })}
                     </p>
                   </div>
@@ -160,6 +304,37 @@ export function Dashboard() {
             </ol>
           )}
         </div>
+      </div>
+
+      {/* Row 2: leads per week + conversion rates */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Calendar size={16} className="text-brand-600" />
+            <h2 className="text-sm font-semibold text-gray-800">Leads por semana</h2>
+          </div>
+          <LeadsPerWeekChart data={data?.leadsPerWeek ?? []} />
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <ArrowRight size={16} className="text-brand-600" />
+            <h2 className="text-sm font-semibold text-gray-800">Conversão entre etapas</h2>
+          </div>
+          <ConversionTable
+            transitions={data?.stageTransitions ?? []}
+            stages={data?.leadsByStage ?? []}
+          />
+        </div>
+      </div>
+
+      {/* Row 3: messages by campaign */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart2 size={16} className="text-brand-600" />
+          <h2 className="text-sm font-semibold text-gray-800">Mensagens por campanha</h2>
+        </div>
+        <MessagesByCampaignList data={data?.messagesByCampaign ?? []} />
       </div>
     </div>
   )
