@@ -87,25 +87,23 @@ export function useLeads() {
       metadata: { from_stage_id: lead.stage_id, to_stage_id: newStageId },
     })
 
-    // Auto-trigger: if the destination stage has is_trigger=true, generate messages
-    // for every active campaign in the workspace (fire-and-forget, non-blocking)
-    const destStage = stages?.find(s => s.id === newStageId)
-    if (destStage?.is_trigger) {
-      const { data: activeCampaigns } = await supabase
-        .from('campaigns')
-        .select('id')
-        .eq('workspace_id', workspace.id)
-        .eq('is_active', true)
+    // Auto-trigger: fire campaigns that are explicitly configured for this stage
+    // (trigger_stage_id = newStageId), fire-and-forget, non-blocking
+    const { data: triggerCampaigns } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('workspace_id', workspace.id)
+      .eq('is_active', true)
+      .eq('trigger_stage_id', newStageId)
 
-      if (activeCampaigns?.length) {
-        Promise.allSettled(
-          activeCampaigns.map(c =>
-            supabase.functions.invoke('generate-messages', {
-              body: { lead_id: leadId, campaign_id: c.id },
-            })
-          )
+    if (triggerCampaigns?.length) {
+      Promise.allSettled(
+        triggerCampaigns.map(c =>
+          supabase.functions.invoke('generate-messages', {
+            body: { lead_id: leadId, campaign_id: c.id, variations: 3 },
+          })
         )
-      }
+      )
     }
 
     return true

@@ -39,12 +39,17 @@ export function useMessages(campaignId: string | null) {
     setIsGenerating(true)
     setError(null)
 
-    const { error } = await supabase.functions.invoke('generate-messages', {
-      body: { lead_id: leadId, campaign_id: campaignId },
+    const { data, error } = await supabase.functions.invoke('generate-messages', {
+      body: { lead_id: leadId, campaign_id: campaignId, variations: 3 },
     })
 
     setIsGenerating(false)
-    if (error) { setError(error.message); return false }
+    if (error) {
+      const detail = data?.error ?? data?.detail ?? error.message
+      setError(detail)
+      console.error('generateForLead error:', error, data)
+      return false
+    }
     await fetchMessages()
     return true
   }
@@ -69,6 +74,39 @@ export function useMessages(campaignId: string | null) {
           type: 'message_sent',
           metadata: { campaign_id: msg.campaign_id, message_id: id },
         })
+
+        // Move lead to the trigger stage ("Tentando Contato") if not already there
+        const { data: triggerStage } = await supabase
+          .from('pipeline_stages')
+          .select('id')
+          .eq('workspace_id', workspace.id)
+          .eq('is_trigger', true)
+          .order('position', { ascending: true })
+          .limit(1)
+          .single()
+
+        if (triggerStage) {
+          const { data: lead } = await supabase
+            .from('leads')
+            .select('stage_id')
+            .eq('id', msg.lead_id)
+            .single()
+
+          if (lead && lead.stage_id !== triggerStage.id) {
+            await db.from('leads').update({ stage_id: triggerStage.id }).eq('id', msg.lead_id)
+            await db.from('activity_logs').insert({
+              workspace_id: workspace.id,
+              lead_id: msg.lead_id,
+              user_id: user.id,
+              type: 'lead_moved',
+              metadata: {
+                from_stage_id: lead.stage_id,
+                to_stage_id: triggerStage.id,
+                triggered_by: 'message_sent',
+              },
+            })
+          }
+        }
       }
     }
     return true

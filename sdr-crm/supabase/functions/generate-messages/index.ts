@@ -1,5 +1,5 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from 'https://deno.land/std@0.208.0/http/server.ts'
+import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -12,7 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    // ── Auth ──────────────────────────────────────────────────
     const authHeader = req.headers.get('authorization')
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
@@ -22,23 +21,27 @@ serve(async (req) => {
 
     const supabaseUrl  = Deno.env.get('SUPABASE_URL')!
     const supabaseKey  = Deno.env.get('SUPABASE_ANON_KEY')!
-    const openaiKey    = Deno.env.get('OPENAI_API_KEY')!
+    const geminiKey    = Deno.env.get('GEMINI_API_KEY')
 
-    // Client autenticado com o JWT do usuário (respeita RLS)
+    if (!geminiKey) {
+      return new Response(JSON.stringify({ error: 'GEMINI_API_KEY secret not configured' }), {
+        status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     const supabase = createClient(supabaseUrl, supabaseKey, {
       global: { headers: { Authorization: authHeader } },
     })
 
-    // Client com service role para inserir generated_messages / activity_logs
     const supabaseAdmin = createClient(
       supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     )
 
-    // ── Body ──────────────────────────────────────────────────
-    const { lead_id, campaign_id } = await req.json() as {
+    const { lead_id, campaign_id, variations = 3 } = await req.json() as {
       lead_id: string
       campaign_id: string
+      variations?: number
     }
 
     if (!lead_id || !campaign_id) {
@@ -47,7 +50,8 @@ serve(async (req) => {
       })
     }
 
-    // ── Fetch user ────────────────────────────────────────────
+    const numVariations = Math.min(Math.max(1, variations), 5)
+
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -55,7 +59,6 @@ serve(async (req) => {
       })
     }
 
-    // ── Fetch lead ────────────────────────────────────────────
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('id, workspace_id, name, email, company, role')
@@ -68,7 +71,6 @@ serve(async (req) => {
       })
     }
 
-    // ── Fetch campaign ────────────────────────────────────────
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
       .select('id, workspace_id, name, channel, context, prompt, is_active')
@@ -87,21 +89,19 @@ serve(async (req) => {
       })
     }
 
-    // Garante que lead e campanha pertencem ao mesmo workspace
     if (lead.workspace_id !== campaign.workspace_id) {
       return new Response(JSON.stringify({ error: 'Resource workspace mismatch' }), {
         status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // ── Build prompt ──────────────────────────────────────────
     const resolvedPrompt = campaign.prompt
       .replace(/\{\{nome\}\}/gi,    lead.name    ?? '')
       .replace(/\{\{empresa\}\}/gi, lead.company ?? '')
       .replace(/\{\{cargo\}\}/gi,   lead.role    ?? '')
       .replace(/\{\{email\}\}/gi,   lead.email   ?? '')
 
-    const systemMessage = `Você é um especialista em SDR (Sales Development Representative) com anos de experiência em prospecção B2B.
+    const systemInstruction = `Você é um especialista em SDR (Sales Development Representative) com anos de experiência em prospecção B2B.
 
 Contexto da empresa que está prospectando:
 ${campaign.context}
@@ -116,82 +116,79 @@ Instruções:
 - Não inclua placeholders não substituídos; se faltar informação, adapte naturalmente
 - Retorne apenas o texto da mensagem, sem comentários adicionais`
 
-    // ── Call OpenAI ───────────────────────────────────────────
-    const MODEL = 'gpt-4o-mini'
+    const MODEL = 'gemini-2.5-flash'
+    const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${geminiKey!}`
 
-    const openaiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openaiKey}`,
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        temperature: 0.8,
-        max_tokens: 600,
-        messages: [
-          { role: 'system', content: systemMessage },
-          { role: 'user',   content: resolvedPrompt },
-        ],
-      }),
-    })
+    const generatedContents: string[] = []
 
-    if (!openaiRes.ok) {
-      const errBody = await openaiRes.text()
-      console.error('OpenAI error:', errBody)
-      return new Response(JSON.stringify({ error: 'OpenAI API error', detail: errBody }), {
+    for (let i = 0; i < numVariations; i++) {
+      const geminiRes = await fetch(GEMINI_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ role: 'user', parts: [{ text: resolvedPrompt }] }],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 600 },
+        }),
+      })
+
+      if (!geminiRes.ok) {
+        const errBody = await geminiRes.text()
+        console.error(`Gemini error (status ${geminiRes.status}):`, errBody)
+        return new Response(JSON.stringify({ error: `Gemini API error (${geminiRes.status})`, detail: errBody }), {
+          status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const geminiData = await geminiRes.json()
+      const text = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text?.trim()
+      if (text) generatedContents.push(text)
+    }
+
+    if (!generatedContents.length) {
+      return new Response(JSON.stringify({ error: 'Empty response from Gemini' }), {
         status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const openaiData = await openaiRes.json()
-    const content = openaiData.choices?.[0]?.message?.content?.trim() ?? ''
+    const inserts = generatedContents.map((content, i) => ({
+      workspace_id: lead.workspace_id,
+      lead_id:      lead.id,
+      campaign_id:  campaign.id,
+      generated_by: user.id,
+      content,
+      variation:    i + 1,
+      status:       'draft',
+      prompt_used:  resolvedPrompt,
+      model_used:   MODEL,
+    }))
 
-    if (!content) {
-      return new Response(JSON.stringify({ error: 'Empty response from OpenAI' }), {
-        status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    // ── Insert generated_message ──────────────────────────────
-    const { data: message, error: insertError } = await supabaseAdmin
+    const { data: messages, error: insertError } = await supabaseAdmin
       .from('generated_messages')
-      .insert({
-        workspace_id: lead.workspace_id,
-        lead_id:      lead.id,
-        campaign_id:  campaign.id,
-        generated_by: user.id,
-        content,
-        variation:    1,
-        status:       'draft',
-        prompt_used:  resolvedPrompt,
-        model_used:   MODEL,
-      })
+      .insert(inserts)
       .select('*')
-      .single()
 
     if (insertError) {
       console.error('Insert error:', insertError)
-      return new Response(JSON.stringify({ error: 'Failed to save message', detail: insertError.message }), {
+      return new Response(JSON.stringify({ error: 'Failed to save messages', detail: insertError.message }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    // ── Log activity ──────────────────────────────────────────
     await supabaseAdmin.from('activity_logs').insert({
       workspace_id: lead.workspace_id,
       lead_id:      lead.id,
       user_id:      user.id,
       type:         'message_generated',
       metadata: {
-        campaign_id: campaign.id,
-        message_id:  message.id,
-        model:       MODEL,
-        channel:     campaign.channel,
+        campaign_id:  campaign.id,
+        variations:   inserts.length,
+        model:        MODEL,
+        channel:      campaign.channel,
       },
     })
 
-    return new Response(JSON.stringify({ message }), {
+    return new Response(JSON.stringify({ messages }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })

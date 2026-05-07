@@ -1,15 +1,16 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Kanban, Megaphone,
-  LogOut, ChevronDown,
+  LayoutDashboard, Columns3, Megaphone,
+  LogOut, ChevronDown, GitBranch,
 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import { cn, getInitials } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { to: '/dashboard',  label: 'Dashboard',  icon: LayoutDashboard },
-  { to: '/kanban',     label: 'Kanban',      icon: Kanban },
+  { to: '/kanban',     label: 'Kanban',      icon: Columns3 },
   { to: '/campaigns',  label: 'Campanhas',   icon: Megaphone },
+  { to: '/pipeline',   label: 'Funil',       icon: GitBranch },
 ]
 
 export function Sidebar() {

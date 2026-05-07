@@ -10,6 +10,7 @@ const Dashboard  = lazy(() => import('@/pages/Dashboard').then(m => ({ default: 
 const Kanban     = lazy(() => import('@/pages/Kanban').then(m => ({ default: m.Kanban })))
 const LeadDetail = lazy(() => import('@/pages/LeadDetail').then(m => ({ default: m.LeadDetail })))
 const Campaigns  = lazy(() => import('@/pages/Campaigns').then(m => ({ default: m.Campaigns })))
+const Pipeline   = lazy(() => import('@/pages/Pipeline').then(m => ({ default: m.Pipeline })))
 
 function PageLoader() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
                 <Route path="kanban"        element={<Kanban />} />
                 <Route path="leads/:id"     element={<LeadDetail />} />
                 <Route path="campaigns"     element={<Campaigns />} />
+                <Route path="pipeline"      element={<Pipeline />} />
               </Route>
             </Route>
 

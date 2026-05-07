@@ -5,10 +5,18 @@
       "Bash(npm install *)",
       "Bash(npx tailwindcss *)",
       "Bash(./node_modules/.bin/tailwindcss init *)",
-      "PowerShell(Set-Location \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\\\\sdr-crm\"; Get-ChildItem node_modules\\\\.bin | Where-Object { $_.Name -match \"tail\" })",
-      "PowerShell(Set-Location \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\"; npm create vite@latest sdr-crm-app -- --template react-ts 2>&1 | Select-Object -Last 5)",
       "Bash(npm run *)",
-      "Bash(npx tsc *)"
+      "Bash(npx tsc *)",
+      "Bash(supabase --version)",
+      "Bash(supabase functions *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "PowerShell(supabase --version 2>&1)",
+      "PowerShell(npx supabase --version 2>&1)",
+      "Read(//c/Users/USU�RIO/Prova Vibe coding/sdr-crm/supabase/**)",
+      "Read(//c/Users/USU�RIO/**)",
+      "Bash(git reset *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USUÁRIO\\Prova Vibe coding\\sdr-crm\\supabase"
