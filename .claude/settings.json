@@ -21,7 +21,15 @@
       "Bash(Sort-Object)",
       "PowerShell($dir = \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\\\\sdr-crm\"; Get-ChildItem -Path $dir -Force | ForEach-Object { $_.FullName })",
       "PowerShell(Get-ChildItem -Path \"C:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\\\\\" -Force | ForEach-Object { $_.FullName })",
-      "Bash(findstr recharts *)"
+      "Bash(findstr recharts *)",
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\" -Recurse -Force)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(ConvertTo-Json -Depth 10)",
+      "PowerShell(Get-ChildItem -Path \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\" -Recurse -Force | Select-Object FullName | ForEach-Object { $_.FullName } | head -100)",
+      "Bash(Test-Path \"c:\\\\Users\\\\USUÁRIO\\\\Prova Vibe coding\\\\README.md\")",
+      "Bash(git commit *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\USUÁRIO\\Prova Vibe coding\\sdr-crm\\supabase"
